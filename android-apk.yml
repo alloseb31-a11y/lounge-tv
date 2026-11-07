@@ -1,0 +1,40 @@
+name: Build Lounge Tv APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android platform files
+        run: flutter create . --platforms=android --org fr.loungetv
+      - name: Set app label and Android TV launcher category
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('android/app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          s = re.sub(r'android:label="[^"]+"', 'android:label="Lounge Tv"', s, count=1)
+          s = re.sub(r'<application\b', '<application android:usesCleartextTraffic="true"', s, count=1)
+          if 'android.permission.INTERNET' not in s:
+              s = s.replace('<application', '<uses-permission android:name="android.permission.INTERNET" />\n    <uses-feature android:name="android.software.leanback" android:required="false" />\n    <application', 1)
+          if 'android.intent.category.LEANBACK_LAUNCHER' not in s:
+              s = s.replace('<category android:name="android.intent.category.LAUNCHER" />', '<category android:name="android.intent.category.LAUNCHER" />\n                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />')
+          p.write_text(s)
+          PY
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lounge-Tv-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
