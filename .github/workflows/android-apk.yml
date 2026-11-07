@@ -16,6 +16,13 @@ jobs:
           cache: true
       - name: Generate Android platform files
         run: flutter create . --platforms=android --org fr.loungetv
+      - name: Forcer compileSdk 36
+        run: |
+          for f in android/app/build.gradle.kts android/app/build.gradle; do
+            if [ -f "$f" ]; then
+              sed -i -E 's/compileSdk(Version)?[ =]+flutter\.compileSdkVersion/compileSdk = 36/' "$f"
+            fi
+          done
       - name: Set app label and Android TV launcher category
         shell: bash
         run: |
